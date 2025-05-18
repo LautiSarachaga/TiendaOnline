@@ -6,6 +6,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+<<<<<<< HEAD
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 const app = express();
@@ -19,6 +20,7 @@ const mercadopago = new MercadoPagoConfig({ accessToken: MP_TOKEN });
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI, {
+
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
