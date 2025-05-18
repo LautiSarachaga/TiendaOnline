@@ -7,13 +7,13 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = 'claveultrasecreta123';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 const mercadopago = new MercadoPagoConfig({ accessToken: 'APP_USR-8483609915100566-051815-1bd9c27794b8d86f8a14b3aeeade7b5d-817043699' });
 // Conexión a MongoDB local
-mongoose.connect('mongodb://localhost:27017/tienda', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
