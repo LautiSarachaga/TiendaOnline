@@ -1,19 +1,24 @@
 // index.js
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'claveultrasecreta123';
-
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
-const mercadopago = new MercadoPagoConfig({ accessToken: 'APP_USR-8483609915100566-051815-1bd9c27794b8d86f8a14b3aeeade7b5d-817043699' });
-// Conexión a MongoDB local
-mongoose.connect('mongodb://localhost:27017/tienda', {
+const app = express();
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET;
+const MONGODB_URI = process.env.MONGODB_URI;
+const MP_TOKEN = process.env.MP_TOKEN;
+
+// Configurar MercadoPago con el token de entorno
+const mercadopago = new MercadoPagoConfig({ accessToken: MP_TOKEN });
+
+// Conexión a MongoDB
+mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -40,95 +45,39 @@ const Pedido = mongoose.model('Pedido', new mongoose.Schema({
 }));
 
 // ========================
-// Catálogo de productos (simulado)
+// Catálogo de productos
 // ========================
 const productos = [
-  {
-    id: 1,
-    nombre: "Remera Negra",
-    precio: 3500,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Remera básica de algodón color negro"
-  },
-  {
-    id: 2,
-    nombre: "Pantalón Jeans",
-    precio: 9500,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Jeans clásico azul oscuro"
-  },
-  {
-    id: 3,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  },
-
-  {
-    id: 4,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  },
-  {
-    id: 5,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  },
-  {
-    id: 6,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  },
-  {
-    id: 7,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  },
-  {
-    id: 8,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  }
+  { id: 1, nombre: "Remera Negra", precio: 3500, imagen: "https://via.placeholder.com/150", descripcion: "Remera básica de algodón color negro" },
+  { id: 2, nombre: "Pantalón Jeans", precio: 9500, imagen: "https://via.placeholder.com/150", descripcion: "Jeans clásico azul oscuro" },
+  { id: 3, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
+  { id: 4, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
+  { id: 5, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
+  { id: 6, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
+  { id: 7, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
+  { id: 8, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" }
 ];
 
 // ========================
 // Rutas
 // ========================
-
-// Ruta de prueba
 app.get('/', (req, res) => {
   res.send('Servidor funcionando correctamente');
 });
 
-// Obtener productos
 app.get('/api/productos', (req, res) => {
   res.json(productos);
 });
 
-// Registro de usuario
 app.post('/api/register', async (req, res) => {
   const { nombre, email, password } = req.body;
-
   if (!nombre || !email || !password) {
     return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
   }
 
   try {
     const existente = await Usuario.findOne({ email });
-    if (existente) {
-      return res.status(400).json({ mensaje: 'Email ya registrado' });
-    }
+    if (existente) return res.status(400).json({ mensaje: 'Email ya registrado' });
 
     const hash = await bcrypt.hash(password, 10);
     const nuevoUsuario = new Usuario({ nombre, email, password: hash });
@@ -141,7 +90,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login de usuario
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -163,13 +111,11 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/pedido', async (req, res) => {
   const token = req.headers.authorization;
-
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const usuarioEmail = decoded.email;
-
     const { productos } = req.body;
 
     if (!Array.isArray(productos) || productos.length === 0) {
@@ -186,10 +132,8 @@ app.post('/api/pedido', async (req, res) => {
   }
 });
 
-
 app.post('/api/crear-preferencia', async (req, res) => {
   const { productos } = req.body;
-
   if (!productos || !Array.isArray(productos)) {
     return res.status(400).json({ mensaje: "Carrito inválido" });
   }
@@ -203,7 +147,6 @@ app.post('/api/crear-preferencia', async (req, res) => {
 
   try {
     const preference = new Preference(mercadopago);
-
     const result = await preference.create({
       body: {
         items,
@@ -211,9 +154,8 @@ app.post('/api/crear-preferencia', async (req, res) => {
           success: "https://c0d1-190-3-55-140.sa.ngrok.io/success",
           failure: "https://c0d1-190-3-55-140.sa.ngrok.io/failure",
           pending: "https://c0d1-190-3-55-140.sa.ngrok.io/pending"
-},
-auto_return: "approved"
-
+        },
+        auto_return: "approved"
       }
     });
 
@@ -223,7 +165,6 @@ auto_return: "approved"
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
-
 
 // ========================
 // Iniciar servidor
