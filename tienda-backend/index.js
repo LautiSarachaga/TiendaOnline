@@ -6,7 +6,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-<<<<<<< HEAD
+
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 const app = express();
