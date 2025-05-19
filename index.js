@@ -14,13 +14,11 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
 // Configurar MercadoPago v2.7.0
-if (!MP_TOKEN) {
-  console.error('❌ MP_TOKEN no definido en el entorno');
-} else {
-  mercadopago.configure({
-    accessToken: MP_TOKEN
-  });
-}
+const mercadopago = require('mercadopago');
+
+const mp = new mercadopago.MercadoPagoConfig({
+  accessToken: MP_TOKEN,
+});
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
