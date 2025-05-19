@@ -139,7 +139,7 @@ app.post('/api/crear-preferencia', async (req, res) => {
 
   // Mapear productos con las claves que espera MercadoPago
   const items = productos.map(p => ({
-    title: p.nombre,  // debe ser "title"
+    title: p.title,  // debe ser "title"
     unit_price: Number(p.precio),
     quantity: p.cantidad || 1,
     currency_id: 'ARS'
