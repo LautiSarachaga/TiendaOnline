@@ -13,8 +13,14 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
-// Configurar MercadoPago con el token de entorno
-mercadopago.access_token = MP_TOKEN;
+// Configurar MercadoPago v2.7.0
+if (!MP_TOKEN) {
+  console.error('❌ MP_TOKEN no definido en el entorno');
+} else {
+  mercadopago.configure({
+    accessToken: MP_TOKEN
+  });
+}
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
@@ -25,7 +31,7 @@ mongoose.connect(MONGODB_URI)
 app.use(cors());
 app.use(express.json());
 
-// Modelo de Usuario
+// Modelos
 const Usuario = mongoose.model('Usuario', new mongoose.Schema({
   nombre: String,
   email: { type: String, unique: true },
@@ -38,7 +44,7 @@ const Pedido = mongoose.model('Pedido', new mongoose.Schema({
   fecha: { type: Date, default: Date.now }
 }));
 
-// Catálogo de productos (simulado)
+// Productos simulados
 const productos = [
   { id: 1, nombre: "Remera Negra", precio: 3500, imagen: "https://via.placeholder.com/150", descripcion: "Remera básica de algodón color negro" },
   { id: 2, nombre: "Pantalón Jeans", precio: 9500, imagen: "https://via.placeholder.com/150", descripcion: "Jeans clásico azul oscuro" },
@@ -122,6 +128,7 @@ app.post('/api/pedido', async (req, res) => {
   }
 });
 
+// RUTA ACTUALIZADA para MercadoPago v2.7.0
 app.post('/api/crear-preferencia', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: "Token faltante" });
@@ -137,9 +144,8 @@ app.post('/api/crear-preferencia', async (req, res) => {
     return res.status(400).json({ mensaje: "Carrito inválido" });
   }
 
-  // Mapear productos con las claves que espera MercadoPago
   const items = productos.map(p => ({
-    title: p.title,  // debe ser "title"
+    title: p.nombre,
     unit_price: Number(p.precio),
     quantity: p.cantidad || 1,
     currency_id: 'ARS'
@@ -156,15 +162,15 @@ app.post('/api/crear-preferencia', async (req, res) => {
       auto_return: "approved"
     };
 
-    const response = await mercadopago.preferences.create(preference);
-    res.json({ init_point: response.body.init_point });
+    const { Preference } = mercadopago;
+    const response = await Preference.create(preference);
+    res.json({ init_point: response.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 });
