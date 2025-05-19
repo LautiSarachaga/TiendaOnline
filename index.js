@@ -1,18 +1,23 @@
 // index.js (Backend)
 require('dotenv').config();
 
-const express = require('express');
+import express from 'express';
+import { MercadoPagoConfig } from 'mercadopago';
+
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mercadopago = require('mercadopago');
+
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
-const MP_TOKEN = process.env.MP_TOKEN;
+const mercadopago = new MercadoPagoConfig({
+  accessToken: process.env.MP_TOKEN,
+});
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
@@ -127,51 +132,24 @@ app.post('/api/pedido', async (req, res) => {
   }
 });
 
-app.post('/api/crear-preferencia', async (req, res) => {
-  const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ mensaje: "Token faltante" });
-
+app.post('/crear-preferencia', async (req, res) => {
   try {
-    jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
-  } catch {
-    return res.status(401).json({ mensaje: "Token inválido" });
-  }
-
-  const { productos } = req.body;
-  if (!productos || !Array.isArray(productos)) {
-    return res.status(400).json({ mensaje: "Carrito inválido" });
-  }
-
-  // Mapear productos con las claves que espera MercadoPago
-  const items = productos.map(p => ({
-    title: p.nombre,  // ¡CORRECCIÓN! Usar p.nombre
-    unit_price: Number(p.precio),
-    quantity: p.cantidad || 1,
-    currency_id: 'ARS'
-  }));
-
-  try {
-    // Configurar Mercado Pago DENTRO de la ruta
-    mercadopago.configure({
-      access_token: MP_TOKEN
+    const preference = await mercadopago.preference.create({
+      body: {
+        items: [
+          {
+            title: 'Producto de prueba',
+            quantity: 1,
+            unit_price: 100,
+          },
+        ],
+      },
     });
 
-    const preference = {
-      items,
-      back_urls: {
-        success: "https://tiendaonline-87q2.onrender.com/api/success", // Reemplazar con tus URLs reales
-        failure: "https://tiendaonline-87q2.onrender.com/api/failure", // Reemplazar con tus URLs reales
-        pending: "https://tiendaonline-87q2.onrender.com/api/pending"  // Reemplazar con tus URLs reales
-      },
-      auto_return: "approved"
-    };
-
-    const response = await mercadopago.preferences.create(preference);
-    res.json({ init_point: response.body.init_point });
-
-  } catch (err) {
-    console.error("💥 Error al crear preferencia:", err);
-    res.status(500).json({ mensaje: "Error al crear preferencia de pago: " + (err.message || "Error desconocido") });
+    res.json({ id: preference.id });
+  } catch (error) {
+    console.error('💥 Error al crear preferencia:', error);
+    res.status(500).send('Error al crear preferencia');
   }
 });
 
