@@ -71,6 +71,17 @@ const productos = [
   }
 ];
 
+const Carrito = mongoose.model('Carrito', new mongoose.Schema({
+  usuarioEmail: { type: String, required: true },
+  productos: [{ 
+    id: Number, 
+    nombre: String, 
+    precio: Number, 
+    cantidad: Number 
+  }]
+}));
+
+
 // ========================
 // Rutas
 // ========================
@@ -123,6 +134,58 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ mensaje: 'Error al iniciar sesión' });
   }
 });
+
+// Obtener carrito del usuario
+app.get('/api/carrito', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const carrito = await Carrito.findOne({ usuarioEmail: decoded.email }) || { productos: [] };
+    res.json(carrito.productos);
+  } catch (error) {
+    res.status(401).json({ mensaje: 'Token inválido' });
+  }
+});
+
+// Actualizar carrito del usuario
+app.post('/api/carrito', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { productos } = req.body;
+
+    if (!Array.isArray(productos)) return res.status(400).json({ mensaje: 'Productos inválidos' });
+
+    await Carrito.findOneAndUpdate(
+      { usuarioEmail: decoded.email },
+      { productos },
+      { upsert: true }
+    );
+
+    res.json({ mensaje: 'Carrito guardado con éxito' });
+  } catch (error) {
+    res.status(401).json({ mensaje: 'Token inválido' });
+  }
+});
+
+// Vaciar carrito
+app.delete('/api/carrito', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    await Carrito.deleteOne({ usuarioEmail: decoded.email });
+    res.json({ mensaje: 'Carrito eliminado' });
+  } catch (error) {
+    res.status(401).json({ mensaje: 'Token inválido' });
+  }
+});
+
 
 app.post('/api/pedido', async (req, res) => {
   const token = req.headers.authorization;
