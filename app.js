@@ -74,12 +74,19 @@ function finalizarCompra() {
 
   fetch(`${API_URL}/api/crear-preferencia`, {
     method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": token
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
     },
-    body: JSON.stringify({ productos: carrito })
-  })
+    body: JSON.stringify({
+        productos: carrito.map(item => ({
+            title: item.nombre,
+            unit_price: Number(item.precio),
+            quantity: item.cantidad,
+            currency_id: 'ARS'
+        }))
+    })
+})
   .then(res => res.json())
   .then(data => {
     if (data.init_point) {
