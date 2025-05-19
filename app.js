@@ -1,7 +1,12 @@
-const API_URL = 'https://tiendaonline-87q2.onrender.com';
+// app.js
 
 let productos = [];
-let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+const email = localStorage.getItem("email");
+let carrito = [];
+
+if (email) {
+  carrito = JSON.parse(localStorage.getItem(`carrito_${email}`)) || [];
+}
 
 function renderCatalogo() {
   const contenedor = document.getElementById("catalogo");
@@ -21,21 +26,35 @@ function renderCatalogo() {
 
 function agregarAlCarrito(id) {
   const producto = productos.find(p => p.id === id);
-  if (!producto) return;
-
   const existente = carrito.find(p => p.id === id);
   if (existente) {
     existente.cantidad += 1;
   } else {
     carrito.push({ ...producto, cantidad: 1 });
   }
-
   guardarCarrito();
   actualizarCarritoUI();
 }
 
+function quitarDelCarrito(id) {
+  const index = carrito.findIndex(p => p.id === id);
+  if (index !== -1) {
+    if (carrito[index].cantidad > 1) {
+      carrito[index].cantidad--;
+    } else {
+      carrito.splice(index, 1);
+    }
+    guardarCarrito();
+    actualizarCarritoUI();
+    mostrarCarrito();
+  }
+}
+
 function guardarCarrito() {
-  localStorage.setItem("carrito", JSON.stringify(carrito));
+  const email = localStorage.getItem("email");
+  if (email) {
+    localStorage.setItem(`carrito_${email}`, JSON.stringify(carrito));
+  }
 }
 
 function actualizarCarritoUI() {
@@ -63,37 +82,42 @@ function mostrarCarrito() {
   modal.classList.remove("oculto");
 }
 
-
 function cerrarCarrito() {
   document.getElementById("carritoModal").classList.add("oculto");
+}
+
+function vaciarCarrito() {
+  const email = localStorage.getItem("email");
+  if (email) {
+    localStorage.removeItem(`carrito_${email}`);
+  }
+  carrito = [];
+  actualizarCarritoUI();
+  cerrarCarrito();
+  alert("Carrito vaciado.");
 }
 
 function finalizarCompra() {
   const token = localStorage.getItem("token");
   const nombre = localStorage.getItem("nombre");
+  const email = localStorage.getItem("email");
 
   if (!token || !nombre) {
     alert("Debés iniciar sesión para finalizar la compra.");
     return;
   }
 
-  fetch(`${API_URL}/api/crear-preferencia`, {
+  fetch("https://tiendaonline-87q2.onrender.com/api/crear-preferencia", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      productos: carrito.map(item => ({
-        nombre: item.nombre,
-        precio: item.precio,
-        cantidad: item.cantidad
-      }))
-    })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productos: carrito })
   })
     .then(res => res.json())
     .then(data => {
       if (data.init_point) {
+        carrito = [];
+        guardarCarrito();
+        actualizarCarritoUI();
         window.location.href = data.init_point;
       } else {
         alert("No se pudo generar el pago");
@@ -105,35 +129,15 @@ function finalizarCompra() {
     });
 }
 
-function quitarDelCarrito(id) {
-  const index = carrito.findIndex(p => p.id === id);
-  if (index !== -1) {
-    if (carrito[index].cantidad > 1) {
-      carrito[index].cantidad--;
-    } else {
-      carrito.splice(index, 1);
-    }
-    guardarCarrito();
-    actualizarCarritoUI();
-    mostrarCarrito();
-  }
-}
-
-function vaciarCarrito() {
-  carrito = [];
-  guardarCarrito();
-  actualizarCarritoUI();
-  cerrarCarrito();
-  alert("Carrito vaciado.");
-}
-
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
 
-fetch(`${API_URL}/api/productos`)
-  .then(res => res.json())
+// 🔁 Obtener productos del backend y mostrarlos
+fetch("https://tiendaonline-87q2.onrender.com/api/productos")
+  .then(response => response.json())
   .then(data => {
     productos = data;
     renderCatalogo();
-  });
+  })
+  .catch(err => console.error("Error cargando productos:", err));
 
 actualizarCarritoUI();
