@@ -7,7 +7,6 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
-// Cargar variables de entorno
 dotenv.config();
 
 const app = express();
@@ -16,22 +15,15 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
-// Configurar MercadoPago
 const mercadopago = new MercadoPagoConfig({ accessToken: MP_TOKEN });
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
-.then(() => console.log('✅ Conectado a MongoDB'))
-.catch(err => console.error('❌ Error al conectar MongoDB:', err));
-
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// ========================
-// Modelos
-// ========================
 const Usuario = mongoose.model('Usuario', new mongoose.Schema({
   nombre: String,
   email: { type: String, unique: true },
@@ -44,65 +36,23 @@ const Pedido = mongoose.model('Pedido', new mongoose.Schema({
   fecha: { type: Date, default: Date.now }
 }));
 
-// ========================
-// Productos simulados
-// ========================
-const productos = [
-  {
-    id: 1,
-    nombre: "Remera Negra",
-    precio: 3500,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Remera básica de algodón color negro"
-  },
-  {
-    id: 2,
-    nombre: "Pantalón Jeans",
-    precio: 9500,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Jeans clásico azul oscuro"
-  },
-  {
-    id: 3,
-    nombre: "Zapatillas Urbanas",
-    precio: 15000,
-    imagen: "https://via.placeholder.com/150",
-    descripcion: "Zapatillas cómodas para uso diario"
-  }
-];
-
 const Carrito = mongoose.model('Carrito', new mongoose.Schema({
   usuarioEmail: { type: String, required: true },
-  productos: [{ 
-    id: Number, 
-    nombre: String, 
-    precio: Number, 
-    cantidad: Number 
-  }]
+  productos: [{ id: Number, nombre: String, precio: Number, cantidad: Number }]
 }));
 
-<script>
-  const API_URL = 'https://tiendaonline-87q2.onrender.com'; // o tu URL real
-</script>
+const productos = [
+  { id: 1, nombre: "Remera Negra", precio: 3500, imagen: "https://via.placeholder.com/150", descripcion: "Remera básica de algodón color negro" },
+  { id: 2, nombre: "Pantalón Jeans", precio: 9500, imagen: "https://via.placeholder.com/150", descripcion: "Jeans clásico azul oscuro" },
+  { id: 3, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" }
+];
 
-// ========================
-// Rutas
-// ========================
-
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando correctamente');
-});
-
-app.get('/api/productos', (req, res) => {
-  res.json(productos);
-});
+app.get('/', (req, res) => res.send('Servidor funcionando correctamente'));
+app.get('/api/productos', (req, res) => res.json(productos));
 
 app.post('/api/register', async (req, res) => {
   const { nombre, email, password } = req.body;
-
-  if (!nombre || !email || !password) {
-    return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
-  }
+  if (!nombre || !email || !password) return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
 
   try {
     const existente = await Usuario.findOne({ email });
@@ -138,7 +88,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Obtener carrito del usuario
 app.get('/api/carrito', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
@@ -152,7 +101,6 @@ app.get('/api/carrito', async (req, res) => {
   }
 });
 
-// Actualizar carrito del usuario
 app.post('/api/carrito', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
@@ -160,7 +108,6 @@ app.post('/api/carrito', async (req, res) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { productos } = req.body;
-
     if (!Array.isArray(productos)) return res.status(400).json({ mensaje: 'Productos inválidos' });
 
     await Carrito.findOneAndUpdate(
@@ -175,7 +122,6 @@ app.post('/api/carrito', async (req, res) => {
   }
 });
 
-// Vaciar carrito
 app.delete('/api/carrito', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
@@ -189,22 +135,18 @@ app.delete('/api/carrito', async (req, res) => {
   }
 });
 
-
 app.post('/api/pedido', async (req, res) => {
   const token = req.headers.authorization;
-
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const usuarioEmail = decoded.email;
-
     const { productos } = req.body;
     if (!Array.isArray(productos) || productos.length === 0) {
       return res.status(400).json({ mensaje: 'Carrito vacío o inválido' });
     }
 
-    const nuevoPedido = new Pedido({ usuarioEmail, productos });
+    const nuevoPedido = new Pedido({ usuarioEmail: decoded.email, productos });
     await nuevoPedido.save();
 
     res.status(201).json({ mensaje: 'Pedido guardado con éxito' });
@@ -230,7 +172,6 @@ app.post('/api/crear-preferencia', async (req, res) => {
 
   try {
     const preference = new Preference(mercadopago);
-
     const result = await preference.create({
       body: {
         items,
@@ -250,9 +191,6 @@ app.post('/api/crear-preferencia', async (req, res) => {
   }
 });
 
-// ========================
-// Iniciar servidor
-// ========================
 app.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 });
