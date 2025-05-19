@@ -1,4 +1,4 @@
-const API_URL = 'https://tiendaonline-87q2.onrender.com'; // Cambiar a tu URL real
+const API_URL = 'https://tiendaonline-87q2.onrender.com';
 
 let productos = [];
 let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
@@ -29,6 +29,7 @@ function agregarAlCarrito(id) {
   } else {
     carrito.push({ ...producto, cantidad: 1 });
   }
+
   guardarCarrito();
   actualizarCarritoUI();
 }
@@ -76,12 +77,12 @@ function finalizarCompra() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`  // **Importante**: incluye Bearer
+      "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify({
       productos: carrito.map(item => ({
-        nombre: item.nombre,     // nombre (no title, debe coincidir con backend)
-        precio: Number(item.precio),
+        nombre: item.nombre,
+        precio: item.precio,
         cantidad: item.cantidad
       }))
     })
@@ -102,13 +103,11 @@ function finalizarCompra() {
 
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
 
-// Cargar productos desde backend
 fetch(`${API_URL}/api/productos`)
-  .then(response => response.json())
+  .then(res => res.json())
   .then(data => {
     productos = data;
     renderCatalogo();
-  })
-  .catch(err => console.error("Error cargando productos:", err));
+  });
 
 actualizarCarritoUI();

@@ -1,5 +1,4 @@
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -13,12 +12,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
-// Configurar MercadoPago v2.7.0
-const mercadopago = require('mercadopago');
-
-const mp = new mercadopago.MercadoPagoConfig({
-  accessToken: MP_TOKEN,
-});
+// Configurar MercadoPago
+mercadopago.configure({ access_token: MP_TOKEN });
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
@@ -44,89 +39,64 @@ const Pedido = mongoose.model('Pedido', new mongoose.Schema({
 
 // Productos simulados
 const productos = [
-  { id: 1, nombre: "Remera Negra", precio: 3500, imagen: "https://via.placeholder.com/150", descripcion: "Remera básica de algodón color negro" },
-  { id: 2, nombre: "Pantalón Jeans", precio: 9500, imagen: "https://via.placeholder.com/150", descripcion: "Jeans clásico azul oscuro" },
-  { id: 3, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
-  { id: 4, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
-  { id: 5, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
-  { id: 6, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
-  { id: 7, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" },
-  { id: 8, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" }
+  { id: 1, nombre: "Remera Negra", precio: 3500 },
+  { id: 2, nombre: "Pantalón Jeans", precio: 9500 },
+  { id: 3, nombre: "Zapatillas Urbanas", precio: 15000 },
+  { id: 4, nombre: "Zapatillas Urbanas", precio: 15000 },
+  { id: 5, nombre: "Zapatillas Urbanas", precio: 15000 },
+  { id: 6, nombre: "Zapatillas Urbanas", precio: 15000 },
+  { id: 7, nombre: "Zapatillas Urbanas", precio: 15000 },
+  { id: 8, nombre: "Zapatillas Urbanas", precio: 15000 }
 ];
 
 // Rutas
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando correctamente');
-});
+app.get('/', (req, res) => res.send('Servidor funcionando correctamente'));
+app.get('/api/productos', (req, res) => res.json(productos));
 
-app.get('/api/productos', (req, res) => {
-  res.json(productos);
-});
-
+// Registro
 app.post('/api/register', async (req, res) => {
   const { nombre, email, password } = req.body;
-  if (!nombre || !email || !password) {
-    return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
-  }
+  if (!nombre || !email || !password) return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
 
-  try {
-    const existente = await Usuario.findOne({ email });
-    if (existente) return res.status(400).json({ mensaje: 'Email ya registrado' });
+  const existente = await Usuario.findOne({ email });
+  if (existente) return res.status(400).json({ mensaje: 'Email ya registrado' });
 
-    const hash = await bcrypt.hash(password, 10);
-    const nuevoUsuario = new Usuario({ nombre, email, password: hash });
-    await nuevoUsuario.save();
+  const hash = await bcrypt.hash(password, 10);
+  await new Usuario({ nombre, email, password: hash }).save();
 
-    res.status(201).json({ mensaje: 'Usuario registrado con éxito' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensaje: 'Error al registrar usuario' });
-  }
+  res.status(201).json({ mensaje: 'Usuario registrado con éxito' });
 });
 
+// Login
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-
-  try {
-    const usuario = await Usuario.findOne({ email });
-    if (!usuario) return res.status(400).json({ mensaje: 'Credenciales inválidas' });
-
-    const valid = await bcrypt.compare(password, usuario.password);
-    if (!valid) return res.status(400).json({ mensaje: 'Credenciales inválidas' });
-
-    const token = jwt.sign({ email: usuario.email, nombre: usuario.nombre }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.json({ mensaje: 'Login exitoso', token, nombre: usuario.nombre });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensaje: 'Error al iniciar sesión' });
+  const usuario = await Usuario.findOne({ email });
+  if (!usuario || !(await bcrypt.compare(password, usuario.password))) {
+    return res.status(400).json({ mensaje: 'Credenciales inválidas' });
   }
+
+  const token = jwt.sign({ email: usuario.email, nombre: usuario.nombre }, JWT_SECRET, { expiresIn: '1h' });
+  res.json({ mensaje: 'Login exitoso', token, nombre: usuario.nombre });
 });
 
+// Pedido
 app.post('/api/pedido', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
 
   try {
     const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
-    const usuarioEmail = decoded.email;
     const { productos } = req.body;
+    if (!productos || !Array.isArray(productos)) return res.status(400).json({ mensaje: 'Carrito inválido' });
 
-    if (!Array.isArray(productos) || productos.length === 0) {
-      return res.status(400).json({ mensaje: 'Carrito vacío o inválido' });
-    }
-
-    const nuevoPedido = new Pedido({ usuarioEmail, productos });
-    await nuevoPedido.save();
-
+    await new Pedido({ usuarioEmail: decoded.email, productos }).save();
     res.status(201).json({ mensaje: 'Pedido guardado con éxito' });
-  } catch (err) {
-    console.error(err);
+  } catch {
     res.status(401).json({ mensaje: 'Token inválido' });
   }
 });
 
-// RUTA ACTUALIZADA para MercadoPago v2.7.0
+// Crear preferencia MercadoPago
 app.post('/api/crear-preferencia', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ mensaje: "Token faltante" });
@@ -150,27 +120,21 @@ app.post('/api/crear-preferencia', async (req, res) => {
   }));
 
   try {
-    const preference = {
+    const preference = await mercadopago.preferences.create({
       items,
       back_urls: {
-        success: "https://tusitio.com/success",
-        failure: "https://tusitio.com/failure",
-        pending: "https://tusitio.com/pending"
+        success: "https://tu-front.vercel.app/success",
+        failure: "https://tu-front.vercel.app/failure",
+        pending: "https://tu-front.vercel.app/pending"
       },
       auto_return: "approved"
-    };
+    });
 
-    // En MercadoPago 2.7.0 se usa mercadopago.preferences.create()
-    const response = await mercadopago.preferences.create(preference);
-
-    // response.body tiene los datos de la preferencia
-    res.json({ init_point: response.body.init_point });
+    res.json({ init_point: preference.body.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`));
