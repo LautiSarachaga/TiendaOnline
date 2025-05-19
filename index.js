@@ -16,15 +16,10 @@ const MP_TOKEN = process.env.MP_TOKEN;
 // Configurar MercadoPago con el token de entorno
 mercadopago.access_token = 'MP_TOKEN';
 
-
-
 // Conexión a MongoDB
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('✅ Conectado a MongoDB'))
-.catch(err => console.error('❌ Error al conectar MongoDB:', err));
+mongoose.connect(MONGODB_URI) // Se eliminaron useNewUrlParser y useUnifiedTopology
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
 // Middleware
 app.use(cors());
