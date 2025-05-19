@@ -81,6 +81,9 @@ const Carrito = mongoose.model('Carrito', new mongoose.Schema({
   }]
 }));
 
+<script>
+  const API_URL = 'https://tiendaonline-87q2.onrender.com'; // o tu URL real
+</script>
 
 // ========================
 // Rutas
