@@ -1,49 +1,9 @@
 // app.js
 
+const API_URL = 'https://tiendaonline-87q2.onrender.com';
+
 let productos = [];
-let carrito = [];
-let usuarioEmail = null;
-
-// ========== FUNCIONES DE CARRITO ==========
-
-function obtenerClaveCarrito() {
-  return `carrito_${usuarioEmail}`;
-}
-
-function cargarCarrito() {
-  if (usuarioEmail) {
-    const guardado = localStorage.getItem(obtenerClaveCarrito());
-    carrito = guardado ? JSON.parse(guardado) : [];
-  } else {
-    carrito = [];
-  }
-}
-
-function guardarCarrito() {
-  if (usuarioEmail) {
-    localStorage.setItem(obtenerClaveCarrito(), JSON.stringify(carrito));
-  }
-}
-
-function vaciarCarrito() {
-  carrito = [];
-  guardarCarrito();
-  actualizarCarritoUI();
-}
-
-function quitarUnidad(id) {
-  const item = carrito.find(p => p.id === id);
-  if (item) {
-    item.cantidad -= 1;
-    if (item.cantidad <= 0) {
-      carrito = carrito.filter(p => p.id !== id);
-    }
-    guardarCarrito();
-    actualizarCarritoUI();
-  }
-}
-
-// ========== RENDER Y EVENTOS ==========
+let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
 
 function renderCatalogo() {
   const contenedor = document.getElementById("catalogo");
@@ -73,6 +33,31 @@ function agregarAlCarrito(id) {
   actualizarCarritoUI();
 }
 
+function quitarDelCarrito(id) {
+  const index = carrito.findIndex(p => p.id === id);
+  if (index !== -1) {
+    if (carrito[index].cantidad > 1) {
+      carrito[index].cantidad -= 1;
+    } else {
+      carrito.splice(index, 1);
+    }
+    guardarCarrito();
+    actualizarCarritoUI();
+    mostrarCarrito();
+  }
+}
+
+function vaciarCarrito() {
+  carrito = [];
+  guardarCarrito();
+  actualizarCarritoUI();
+  mostrarCarrito();
+}
+
+function guardarCarrito() {
+  localStorage.setItem("carrito", JSON.stringify(carrito));
+}
+
 function actualizarCarritoUI() {
   const cantidad = carrito.reduce((acc, item) => acc + item.cantidad, 0);
   document.getElementById("carritoCantidad").textContent = cantidad;
@@ -86,10 +71,7 @@ function mostrarCarrito() {
 
   carrito.forEach(item => {
     const div = document.createElement("div");
-    div.innerHTML = `
-      ${item.nombre} x${item.cantidad} - $${item.precio * item.cantidad}
-      <button onclick="quitarUnidad(${item.id})">-</button>
-    `;
+    div.innerHTML = `${item.nombre} x${item.cantidad} - $${item.precio * item.cantidad} <button onclick="quitarDelCarrito(${item.id})">-</button>`;
     contenedor.appendChild(div);
     total += item.precio * item.cantidad;
   });
@@ -104,13 +86,14 @@ function cerrarCarrito() {
 
 function finalizarCompra() {
   const token = localStorage.getItem("token");
+  const nombre = localStorage.getItem("nombre");
 
-  if (!token || !usuarioEmail) {
+  if (!token || !nombre) {
     alert("Debés iniciar sesión para finalizar la compra.");
     return;
   }
 
-  fetch("https://tiendaonline-87q2.onrender.com/api/crear-preferencia", {
+  fetch(`${API_URL}/api/crear-preferencia`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ productos: carrito })
@@ -129,21 +112,10 @@ function finalizarCompra() {
     });
 }
 
-function detectarUsuario() {
-  usuarioEmail = localStorage.getItem("email");
-  cargarCarrito();
-  actualizarCarritoUI();
-}
-
-// ========== INICIO ==========
-
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
-document.getElementById("vaciarCarrito").addEventListener("click", () => {
-  vaciarCarrito();
-  cerrarCarrito();
-});
+document.getElementById("vaciarCarrito").addEventListener("click", vaciarCarrito);
 
-fetch("https://tiendaonline-87q2.onrender.com/api/productos")
+fetch(`${API_URL}/api/productos`)
   .then(response => response.json())
   .then(data => {
     productos = data;
@@ -151,4 +123,4 @@ fetch("https://tiendaonline-87q2.onrender.com/api/productos")
   })
   .catch(err => console.error("Error cargando productos:", err));
 
-detectarUsuario();
+actualizarCarritoUI();
