@@ -13,6 +13,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
+// Configurar MercadoPago con el token de entorno
+// Asegúrate de que mercadopago esté inicializado antes de configurar access_token
+mercadopago.access_token = MP_TOKEN;
+
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
@@ -150,16 +154,10 @@ app.post('/api/crear-preferencia', async (req, res) => {
       auto_return: "approved"
     };
 
-    // Configura mercadopago.access_token dentro de la ruta
-    mercadopago.configure({
-      access_token: MP_TOKEN
-    });
-
     const response = await mercadopago.preferences.create(preference);
     res.json({ init_point: response.body.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
-    console.error("💥 Error detallado:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
