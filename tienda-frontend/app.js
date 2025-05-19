@@ -1,6 +1,6 @@
 // app.js
 
-const API_URL = 'https://tu-backend.onrender.com'; // 🔁 Reemplazá con tu URL real
+const API_URL = 'https://tiendaonline-87q2.onrender.com'; // 🔁 Reemplazá con tu URL real
 
 let productos = [];
 let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
