@@ -75,30 +75,29 @@ function finalizarCompra() {
   fetch(`${API_URL}/api/crear-preferencia`, {
     method: "POST",
     headers: {
-        "Content-Type": "application/json",
-        "Authorization": token
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`  // **Importante**: incluye Bearer
     },
     body: JSON.stringify({
-        productos: carrito.map(item => ({
-            title: item.nombre,
-            unit_price: Number(item.precio),
-            quantity: item.cantidad,
-            currency_id: 'ARS'
-        }))
+      productos: carrito.map(item => ({
+        nombre: item.nombre,     // nombre (no title, debe coincidir con backend)
+        precio: Number(item.precio),
+        cantidad: item.cantidad
+      }))
     })
-})
-  .then(res => res.json())
-  .then(data => {
-    if (data.init_point) {
-      window.location.href = data.init_point;
-    } else {
-      alert("No se pudo generar el pago");
-    }
   })
-  .catch(err => {
-    console.error(err);
-    alert("Error al crear pago");
-  });
+    .then(res => res.json())
+    .then(data => {
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert("No se pudo generar el pago");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Error al crear pago");
+    });
 }
 
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
