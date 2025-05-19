@@ -14,7 +14,6 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
 // Configurar MercadoPago con el token de entorno
-// Asegúrate de que mercadopago esté inicializado antes de configurar access_token
 mercadopago.access_token = MP_TOKEN;
 
 // Conexión a MongoDB
@@ -22,8 +21,15 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
   .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
-// Middleware
-app.use(cors());
+// Middleware CORS configurado para permitir el origen de Vercel
+const corsOptions = {
+  origin: 'https://tienda-online-delta-nine.vercel.app',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true, // Si necesitas enviar cookies o encabezados de autorización
+  allowedHeaders: 'Content-Type, Authorization', // Los encabezados que permites
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ========================
