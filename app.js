@@ -1,4 +1,5 @@
-const API_URL = 'https://tiendaonline-87q2.onrender.com'; // Cambiar a tu URL real
+// app.js (Frontend)
+const API_URL = 'http://localhost:3000'; // Cambiar a tu URL real
 
 let productos = [];
 let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
@@ -76,11 +77,11 @@ function finalizarCompra() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`  // **Importante**: incluye Bearer
+      "Authorization": `Bearer ${token}`  // ¡CORRECTO! Incluye "Bearer"
     },
     body: JSON.stringify({
       productos: carrito.map(item => ({
-        nombre: item.nombre,     // nombre (no title, debe coincidir con backend)
+        nombre: item.nombre,     // ¡CORRECTO! Enviar "nombre"
         precio: Number(item.precio),
         cantidad: item.cantidad
       }))
@@ -91,24 +92,76 @@ function finalizarCompra() {
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
-        alert("No se pudo generar el pago");
+        alert("No se pudo generar el pago: " + (data.mensaje || "Error desconocido")); // Mejorar el mensaje
       }
     })
     .catch(err => {
       console.error(err);
-      alert("Error al crear pago");
+      alert("Error al crear pago: " + (err.message || "Error desconocido")); // Mejorar el mensaje
     });
 }
 
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
+document.getElementById("formRegistro").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nombre = document.getElementById("regNombre").value;
+  const email = document.getElementById("regEmail").value;
+  const password = document.getElementById("regPass").value;
 
-// Cargar productos desde backend
+  const res = await fetch(`${API_URL}/api/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre, email, password }),
+  });
+
+  const data = await res.json();
+  alert(data.mensaje || "Error al registrar");
+});
+
+document.getElementById("formLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPass").value;
+
+  const res = await fetch(`${API_URL}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("nombre", data.nombre);
+    mostrarUsuario();
+  } else {
+    alert(data.mensaje || "Error al iniciar sesión");
+  }
+});
+
+function mostrarUsuario() {
+  const nombre = localStorage.getItem("nombre");
+  if (nombre) {
+    document.getElementById("formularios-usuario").style.display = "none";
+    document.getElementById("usuario-logueado").style.display = "block";
+    document.getElementById("nombreUsuario").textContent = nombre;
+  }
+}
+
+function cerrarSesion() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("nombre");
+  document.getElementById("usuario-logueado").style.display = "none";
+  document.getElementById("formularios-usuario").style.display = "block";
+}
+
 fetch(`${API_URL}/api/productos`)
-  .then(response => response.json())
+  .then(res => res.json())
   .then(data => {
     productos = data;
     renderCatalogo();
-  })
-  .catch(err => console.error("Error cargando productos:", err));
+  });
 
 actualizarCarritoUI();
+mostrarUsuario();
