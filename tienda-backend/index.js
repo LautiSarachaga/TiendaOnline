@@ -14,9 +14,8 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
 // Configurar MercadoPago con el token de entorno
-mercadopago.configure({
-  access_token: MP_TOKEN
-});
+mercadopago.configurations.setAccessToken('MP_TOKEN');
+
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI, {
