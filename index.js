@@ -1,23 +1,20 @@
-// index.js (Backend)
 require('dotenv').config();
 
-import express from 'express';
-import { MercadoPagoConfig } from 'mercadopago';
-
+const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-
+const mercadopago = require('mercadopago');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
-const mercadopago = new MercadoPagoConfig({
-  accessToken: process.env.MP_TOKEN,
-});
+const MP_TOKEN = process.env.MP_TOKEN;
+
+// Configurar MercadoPago con el token de entorno
+mercadopago.access_token = MP_TOKEN;
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
@@ -28,9 +25,7 @@ mongoose.connect(MONGODB_URI)
 app.use(cors());
 app.use(express.json());
 
-// ========================
 // Modelo de Usuario
-// ========================
 const Usuario = mongoose.model('Usuario', new mongoose.Schema({
   nombre: String,
   email: { type: String, unique: true },
@@ -43,9 +38,7 @@ const Pedido = mongoose.model('Pedido', new mongoose.Schema({
   fecha: { type: Date, default: Date.now }
 }));
 
-// ========================
-// Catálogo de productos
-// ========================
+// Catálogo de productos (simulado)
 const productos = [
   { id: 1, nombre: "Remera Negra", precio: 3500, imagen: "https://via.placeholder.com/150", descripcion: "Remera básica de algodón color negro" },
   { id: 2, nombre: "Pantalón Jeans", precio: 9500, imagen: "https://via.placeholder.com/150", descripcion: "Jeans clásico azul oscuro" },
@@ -57,10 +50,7 @@ const productos = [
   { id: 8, nombre: "Zapatillas Urbanas", precio: 15000, imagen: "https://via.placeholder.com/150", descripcion: "Zapatillas cómodas para uso diario" }
 ];
 
-// ========================
 // Rutas
-// ========================
-
 app.get('/', (req, res) => {
   res.send('Servidor funcionando correctamente');
 });
@@ -114,11 +104,11 @@ app.post('/api/pedido', async (req, res) => {
   if (!token) return res.status(401).json({ mensaje: 'Token faltante' });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
     const usuarioEmail = decoded.email;
     const { productos } = req.body;
 
-    if (!productos || !Array.isArray(productos) || productos.length === 0) {
+    if (!Array.isArray(productos) || productos.length === 0) {
       return res.status(400).json({ mensaje: 'Carrito vacío o inválido' });
     }
 
@@ -132,27 +122,49 @@ app.post('/api/pedido', async (req, res) => {
   }
 });
 
-app.post('/crear-preferencia', async (req, res) => {
-  try {
-    const preference = await mercadopago.preference.create({
-      body: {
-        items: [
-          {
-            title: 'Producto de prueba',
-            quantity: 1,
-            unit_price: 100,
-          },
-        ],
-      },
-    });
+app.post('/api/crear-preferencia', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ mensaje: "Token faltante" });
 
-    res.json({ id: preference.id });
-  } catch (error) {
-    console.error('💥 Error al crear preferencia:', error);
-    res.status(500).send('Error al crear preferencia');
+  try {
+    jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
+  } catch {
+    return res.status(401).json({ mensaje: "Token inválido" });
+  }
+
+  const { productos } = req.body;
+  if (!productos || !Array.isArray(productos)) {
+    return res.status(400).json({ mensaje: "Carrito inválido" });
+  }
+
+  // Mapear productos con las claves que espera MercadoPago
+  const items = productos.map(p => ({
+    title: p.title,  // debe ser "title"
+    unit_price: Number(p.precio),
+    quantity: p.cantidad || 1,
+    currency_id: 'ARS'
+  }));
+
+  try {
+    const preference = {
+      items,
+      back_urls: {
+        success: "https://tusitio.com/success",
+        failure: "https://tusitio.com/failure",
+        pending: "https://tusitio.com/pending"
+      },
+      auto_return: "approved"
+    };
+
+    const response = await mercadopago.preferences.create(preference);
+    res.json({ init_point: response.body.init_point });
+  } catch (err) {
+    console.error("💥 Error al crear preferencia:", err);
+    res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
 
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 });
