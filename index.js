@@ -13,23 +13,13 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
-// Configurar MercadoPago con el token de entorno
-mercadopago.access_token = MP_TOKEN;
-
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
   .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
-// Middleware CORS configurado para permitir el origen de Vercel
-const corsOptions = {
-  origin: 'https://tienda-online-delta-nine.vercel.app',
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true, // Si necesitas enviar cookies o encabezados de autorización
-  allowedHeaders: 'Content-Type, Authorization', // Los encabezados que permites
-};
-
-app.use(cors(corsOptions));
+// Middleware
+app.use(cors());
 app.use(express.json());
 
 // ========================
@@ -160,10 +150,16 @@ app.post('/api/crear-preferencia', async (req, res) => {
       auto_return: "approved"
     };
 
+    // Configura mercadopago.access_token dentro de la ruta
+    mercadopago.configure({
+      access_token: MP_TOKEN
+    });
+
     const response = await mercadopago.preferences.create(preference);
     res.json({ init_point: response.body.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
+    console.error("💥 Error detallado:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
   }
 });
