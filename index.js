@@ -159,9 +159,9 @@ app.post('/api/crear-preferencia', async (req, res) => {
     const preference = {
       items,
       back_urls: {
-        success: "http://localhost:5500/success.html", // Reemplazar con tus URLs reales
-        failure: "http://localhost:5500/failure.html", // Reemplazar con tus URLs reales
-        pending: "http://localhost:5500/pending.html"  // Reemplazar con tus URLs reales
+        success: "https://tiendaonline-87q2.onrender.com/api/success", // Reemplazar con tus URLs reales
+        failure: "https://tiendaonline-87q2.onrender.com/api/failure", // Reemplazar con tus URLs reales
+        pending: "https://tiendaonline-87q2.onrender.com/api/pending"  // Reemplazar con tus URLs reales
       },
       auto_return: "approved"
     };
