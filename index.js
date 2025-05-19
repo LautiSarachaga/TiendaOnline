@@ -162,9 +162,11 @@ app.post('/api/crear-preferencia', async (req, res) => {
       auto_return: "approved"
     };
 
-    const { Preference } = mercadopago;
-    const response = await Preference.create(preference);
-    res.json({ init_point: response.init_point });
+    // En MercadoPago 2.7.0 se usa mercadopago.preferences.create()
+    const response = await mercadopago.preferences.create(preference);
+
+    // response.body tiene los datos de la preferencia
+    res.json({ init_point: response.body.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
