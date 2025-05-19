@@ -1,6 +1,4 @@
-// app.js
-
-const API_URL = 'https://tiendaonline-87q2.onrender.com'; // 🔁 Reemplazá con tu URL real
+const API_URL = 'https://tiendaonline-87q2.onrender.com'; // Cambiar a tu URL real
 
 let productos = [];
 let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
@@ -23,6 +21,8 @@ function renderCatalogo() {
 
 function agregarAlCarrito(id) {
   const producto = productos.find(p => p.id === id);
+  if (!producto) return;
+
   const existente = carrito.find(p => p.id === id);
   if (existente) {
     existente.cantidad += 1;
@@ -80,23 +80,23 @@ function finalizarCompra() {
     },
     body: JSON.stringify({ productos: carrito })
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.init_point) {
-        window.location.href = data.init_point;
-      } else {
-        alert("No se pudo generar el pago");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Error al crear pago");
-    });
+  .then(res => res.json())
+  .then(data => {
+    if (data.init_point) {
+      window.location.href = data.init_point;
+    } else {
+      alert("No se pudo generar el pago");
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Error al crear pago");
+  });
 }
 
 document.getElementById("verCarrito").addEventListener("click", mostrarCarrito);
 
-// 🔁 Obtener productos desde el backend
+// Cargar productos desde backend
 fetch(`${API_URL}/api/productos`)
   .then(response => response.json())
   .then(data => {

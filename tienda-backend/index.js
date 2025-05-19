@@ -1,4 +1,3 @@
-// index.js
 require('dotenv').config();
 
 const express = require('express');
@@ -6,8 +5,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-const { MercadoPagoConfig, Preference } = require('mercadopago');
+const mercadopago = require('mercadopago');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,11 +14,12 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const MP_TOKEN = process.env.MP_TOKEN;
 
 // Configurar MercadoPago con el token de entorno
-const mercadopago = new MercadoPagoConfig({ accessToken: MP_TOKEN });
+mercadopago.configure({
+  access_token: MP_TOKEN
+});
 
 // Conexión a MongoDB
 mongoose.connect(MONGODB_URI, {
-
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -63,6 +62,7 @@ const productos = [
 // ========================
 // Rutas
 // ========================
+
 app.get('/', (req, res) => {
   res.send('Servidor funcionando correctamente');
 });
@@ -148,20 +148,18 @@ app.post('/api/crear-preferencia', async (req, res) => {
   }));
 
   try {
-    const preference = new Preference(mercadopago);
-    const result = await preference.create({
-      body: {
-        items,
-        back_urls: {
-          success: "https://c0d1-190-3-55-140.sa.ngrok.io/success",
-          failure: "https://c0d1-190-3-55-140.sa.ngrok.io/failure",
-          pending: "https://c0d1-190-3-55-140.sa.ngrok.io/pending"
-        },
-        auto_return: "approved"
-      }
-    });
+    const preference = {
+      items,
+      back_urls: {
+        success: "https://tusitio.com/success",
+        failure: "https://tusitio.com/failure",
+        pending: "https://tusitio.com/pending"
+      },
+      auto_return: "approved"
+    };
 
-    res.json({ init_point: result.init_point });
+    const response = await mercadopago.preferences.create(preference);
+    res.json({ init_point: response.body.init_point });
   } catch (err) {
     console.error("💥 Error al crear preferencia:", err);
     res.status(500).json({ mensaje: "Error al crear preferencia de pago" });
